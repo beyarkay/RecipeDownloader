@@ -1,2 +1,6 @@
 requests
 BeautifulSoup4
+pprint
+pandas
+numpy
+seaborn
