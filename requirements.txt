@@ -1,6 +1,7 @@
-requests
 BeautifulSoup4
-pprint
-pandas
+matplotlib
 numpy
+pandas
+requests
 seaborn
+tqdm
