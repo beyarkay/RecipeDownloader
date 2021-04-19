@@ -90,6 +90,24 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     nutrition = soup.select_one("div.partial.recipe-nutrition-section") \
         .select_one("div.section-body") \
         .text.replace("Full Nutrition", "").strip().split("; ")
+    nutri_data = {}
+    for n in nutrition:
+        k = ""
+        v = ""
+        for item in n.split(" "):
+            unit = ""
+            if re.match(r"\d+(\.\d+)?g\.?", item):
+                v = float(item.replace("g", ""))
+                unit = "_g"
+            elif re.match(r"\d+(\.\d+)?mg\.?", item):
+                v = float(re.sub("mg(\.)?", "", item))
+                unit = "_mg"
+            elif re.match(r"\d+(\.\d+)?", item):
+                v = float(item)
+            else:
+                k = item
+        if k and v:
+            nutri_data[k + unit] = v
 
     ingredients = [i.text.strip() for i in soup.select('.ingredients-item-name')]
     title = soup.select_one("h1.headline.heading-content").text
