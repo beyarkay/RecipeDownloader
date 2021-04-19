@@ -1,7 +1,7 @@
-BeautifulSoup4
-matplotlib
-numpy
-pandas
-requests
-seaborn
-tqdm
+BeautifulSoup4~=4.9.3
+numpy~=1.20.2
+pandas~=1.2.4
+requests~=2.25.1
+seaborn~=0.11.1
+tqdm~=4.60.0
+tensorflow
