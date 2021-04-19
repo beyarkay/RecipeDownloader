@@ -72,20 +72,31 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     duration = datetime.datetime.now() - start
     soup = BeautifulSoup(r.text, 'html.parser')
 
-    rating_keys = [int(stars.text.strip().replace(" star values:", "")) for stars in
-                   soup.select_one(".ratings-list").select("span.rating-stars")]
-    rating_vals = [stars.text.strip().replace(" star values:", "") for stars in
-                   soup.select_one(".ratings-list").select("span.rating-count")]
-    ratings = {k: v.replace(",", "") for k, v in zip(rating_keys, rating_vals)}
+    ratings_element = soup.select_one(".ratings-list")
+    if ratings_element:
+        rating_keys = [int(stars.text.strip().replace(" star values:", "")) for stars in
+                       ratings_element.select("span.rating-stars")]
+        rating_vals = [stars.text.strip().replace(" star values:", "") for stars in
+                       ratings_element.select("span.rating-count")]
+    else:
+        rating_keys = [5, 4, 3, 2, 1]
+        rating_vals = ["0", "0", "0", "0", "0"]
+    ratings = {f'{k}_out_of_5': int(v.replace(",", "")) for k, v in zip(rating_keys, rating_vals)}
+
+    rating_sum = sum([int(v) * k for k, v in zip(rating_keys, rating_vals)])
+    rating_n = sum([int(v) for k, v in zip(rating_keys, rating_vals)])
+    rating_avg = (rating_sum / rating_n if rating_n else None)
+
+    num_ratings = [int(re.sub(" Rating(s)?|,", "", l.text.strip())) for l in soup.select("span.ugc-ratings-item") if
+                   re.match(r".*\d+.*", l.text.strip())]
+    num_ratings = num_ratings[0] if num_ratings else 0
+    num_reviews = [int(re.sub(" Review(s)?|,", "", l.text.strip())) for l in
+                   soup.select("a.ugc-ratings-link.ugc-reviews-link") if re.match(r".*\d+.*", l.text.strip())]
+    num_reviews = num_reviews[0] if num_reviews else 0
 
     meta_keys = [l.text.strip().lower().replace(":", "") for l in soup.select("div.recipe-meta-item-header")]
     meta_vals = [l.text.strip().lower().replace(":", "") for l in soup.select("div.recipe-meta-item-body")]
     meta_info = {k: v for k, v in zip(meta_keys, meta_vals)}
-
-    num_ratings = [re.sub(" Ratings", "", l.text.strip()) for l in soup.select("span.ugc-ratings-item") if
-                       re.match(r".*\d+.*", l.text.strip())][0]
-    num_reviews = [re.sub(" Reviews", "", l.text.strip()) for l in
-                       soup.select("a.ugc-ratings-link.ugc-reviews-link") if re.match(r".*\d+.*", l.text.strip())][0]
 
     nutrition = soup.select_one("div.partial.recipe-nutrition-section") \
         .select_one("div.section-body") \
@@ -113,21 +124,23 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     title = soup.select_one("h1.headline.heading-content").text
 
 
-    rating_sum = sum([int(v)*k for (k, v) in ratings.items()])
-    rating_n = sum([int(v) for (k, v) in ratings.items()])
-    rating_avg = rating_sum/rating_n
+    cook_item = soup.select_one("a.author-block.authorBlock.authorBlock--link")
+    if cook_item:
+        cook_link = cook_item.get("href")
+        cook_name = cook_item.select_one("span.author-name").text.strip()
+    else:
+        cook_link = None
+        cook_name = "Anonymous"
 
-    return {
-        "ingredients": ingredients,
+    item = {
+        "cook_link": cook_link,
+        "cook_name": cook_name,
+        "duration": duration,
         "link": link,
         "num_ratings": num_ratings,
         "num_reviews": num_reviews,
-        "title": title,
-        "ratings": ratings,
         "rating_avg": rating_avg,
-        "meta_info": meta_info,
-        "duration": duration,
-        "nutrition": nutrition
+        "title": title,
     }
 
 
