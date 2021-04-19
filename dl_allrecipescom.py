@@ -121,8 +121,10 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
             nutri_data[k + unit] = v
 
     ingredients = [i.text.strip() for i in soup.select('.ingredients-item-name')]
-    title = soup.select_one("h1.headline.heading-content").text
 
+    ingredient_wordvec = __ingredients_to_wordvec(ingredients)
+
+    title = soup.select_one("h1.headline.heading-content").text
 
     cook_item = soup.select_one("a.author-block.authorBlock.authorBlock--link")
     if cook_item:
@@ -142,6 +144,75 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
         "rating_avg": rating_avg,
         "title": title,
     }
+    item.update(meta_info)
+    item.update(ratings)
+    item.update(nutri_data)
+    item.update({f"uses_{k}": v for k, v in ingredient_wordvec.items()})
+
+    return item
+
+
+def __ingredients_to_wordvec(ingredients: typing.List):
+    # ing = df['ingredients'].apply(lambda x: pd.Series(re.sub("\['|'\]", "", x).split("', '")))
+    # ingredients = [(re.sub("\['|'\]", "", i).split("', '")) for i in df['ingredients'].to_list()]
+    # ingredients = [item for subl in ingredients for item in subl]
+    subbed = []
+    for ing in ingredients:
+        # 'Thin' spaces between fractions and whole numbers
+        item = re.sub(r"\\u2009", "", ing).lower()
+        # Halves, Quarters
+        item = re.sub(r"(\D|^)¼", "0.25", item)
+        item = re.sub(r"(\D|^)½", "0.5", item)
+        item = re.sub(r"(\D|^)¾", "0.75", item)
+        # Thirds
+        item = re.sub(r"(\D|^)⅔", "0.666", item)
+        item = re.sub(r"(\D|^)⅓", "0.333", item)
+        # Eighths
+        item = re.sub(r"(\D|^)⅛", "0.125", item)
+        item = re.sub(r"(\D|^)⅜", "0.375", item)
+        item = re.sub(r"(\D|^)⅞", "0.875", item)
+
+        # And now the same, but this time for numbers formatted like 1¼ and not just ¼
+        item = re.sub(r"¼", ".25", item)
+        item = re.sub(r"½", ".5", item)
+        item = re.sub(r"¾", ".75", item)
+        item = re.sub(r"⅔", ".666", item)
+        item = re.sub(r"⅓", ".333", item)
+        item = re.sub(r"⅛", ".125", item)
+        item = re.sub(r"⅜", ".375", item)
+        item = re.sub(r"⅞", ".875", item)
+
+        # Remove prepositions
+        item = re.sub(r"\b(and|or|but|on|in|into|onto|to|as|for|of|from|with)\b", " ", item)
+
+        # Remove special characters and digits
+        item = re.sub(r"\d|\.|,|\(|\)|\*|\\|/|\"|\'|®|™|\[|]|%", " ", item)
+
+        # Remove units of measurement
+        item = re.sub(r"\b(ounce(s)?|(-)?inch(es)?|pound(s)?|cup(s)?|tablespoon(s)?" + \
+                      r"|teaspoon(s)?|can(s)?|(extra )?large|small|medium|big|long|short" + \
+                      r"|chunk(s)?|package(s)?|pkg(s)?|bag(s)?" + \
+                      r")\b", "", item)
+
+        # Remove duplicated dashes
+        item = re.sub(r"-+", "-", item)
+        # Remove orphaned or trailing or leading dashes
+        item = re.sub(r"^\s*-", " ", item)
+        item = re.sub(r"-\s*$", " ", item)
+        item = re.sub(r"\s-\s", " ", item)
+
+        # Strip and single out any duplicated whitespace
+        item = re.sub(r"\s+", " ", item).strip()
+
+        subbed.append(item)
+    subbed = " ".join(subbed).split(" ")
+    wordvec = {}
+    for item in subbed:
+        wordvec[item] = 1 if (item not in wordvec.keys()) else wordvec[item] + 1
+    sorted_keys = sorted(wordvec, key=wordvec.get, reverse=True)
+    sorted_vals = [wordvec[key] for key in sorted_keys]
+    wordvec = {k: v for k, v in zip(sorted_keys, sorted_vals)}
+    return wordvec
 
 
 def prev_link_from_initial(link: typing.AnyStr) -> typing.Dict:
