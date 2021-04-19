@@ -1,5 +1,7 @@
 import datetime
 import typing
+
+import tqdm
 from bs4 import BeautifulSoup
 import requests
 import datetime
@@ -13,15 +15,19 @@ ROOTS = [
 
 def fetch_item_links(limit=100) -> typing.List:
     all_links = []
+    if limit != 0:
+        pbar = tqdm.tqdm(total=limit)
+    else:
+        pbar = tqdm.tqdm(total=limit)
     for root in ROOTS:
         link = root
-        count = 0
         while link is not None and (len(all_links) < limit or limit == 0):
             item_links, link = fetch_one_page_of_links(link)
             all_links.extend(item_links)
             all_links = list(set(all_links))
-            count += 1
-            print(f"Evaluated {link}, count={count}, len(all_links) = {len(all_links)}")
+            pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../"))
+            pbar.update(len(all_links) - pbar.n)
+    pbar.close()
     return all_links[:limit]
 
 
@@ -29,7 +35,7 @@ def fetch_one_page_of_links(link: typing.AnyStr) -> typing.Tuple:
     start = datetime.datetime.now()
     r = requests.get(link)
     duration = datetime.datetime.now() - start
-    print(f"\tFetching {link} took {duration.total_seconds()}s")
+    # print(f"\tFetching {link} took {duration.total_seconds()}s")
     soup = BeautifulSoup(r.text, 'html.parser')
 
     # ====================================================================
@@ -60,7 +66,7 @@ def fetch_one_page_of_links(link: typing.AnyStr) -> typing.Tuple:
 
 
 def link_to_dict(link: typing.AnyStr) -> typing.Dict:
-    print(f"Parsing link {link}")
+    # print(f"Parsing link {link}")
     start = datetime.datetime.now()
     r = requests.get(link)
     duration = datetime.datetime.now() - start

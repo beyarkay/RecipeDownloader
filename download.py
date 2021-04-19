@@ -7,16 +7,19 @@ from pprint import pprint
 import pandas as pd
 import tqdm
 
+
 def main():
-    all_links = dl_allrecipescom.fetch_item_links(limit=200)
+    all_links = dl_allrecipescom.fetch_item_links(limit=1000)
     items = []
-    for link in tqdm.tqdm(all_links):
+    pbar = tqdm.tqdm(all_links)
+    for link in pbar:
         try:
+            pbar.set_description(desc=link)
             items.append(dl_allrecipescom.link_to_dict(link))
         except Exception:
             traceback.print_exc()
-        #pprint(items[-1])
     pd.DataFrame(items).to_csv("recipes.csv")
+
 
 if __name__ == "__main__":
     main()
