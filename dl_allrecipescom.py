@@ -98,27 +98,28 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     meta_vals = [l.text.strip().lower().replace(":", "") for l in soup.select("div.recipe-meta-item-body")]
     meta_info = {k: v for k, v in zip(meta_keys, meta_vals)}
 
-    nutrition = soup.select_one("div.partial.recipe-nutrition-section") \
-        .select_one("div.section-body") \
-        .text.replace("Full Nutrition", "").strip().split("; ")
+    nutrition_section = soup.select_one("div.partial.recipe-nutrition-section")
     nutri_data = {}
-    for n in nutrition:
-        k = ""
-        v = ""
-        for item in n.split(" "):
-            unit = ""
-            if re.match(r"\d+(\.\d+)?g\.?", item):
-                v = float(item.replace("g", ""))
-                unit = "_g"
-            elif re.match(r"\d+(\.\d+)?mg\.?", item):
-                v = float(re.sub("mg(\.)?", "", item))
-                unit = "_mg"
-            elif re.match(r"\d+(\.\d+)?", item):
-                v = float(item)
-            else:
-                k = item
-        if k and v:
-            nutri_data[k + unit] = v
+    if nutrition_section:
+        nutrition = nutrition_section.select_one("div.section-body") \
+            .text.replace("Full Nutrition", "").strip().split("; ")
+        for n in nutrition:
+            k = ""
+            v = ""
+            for item in n.split(" "):
+                unit = ""
+                if re.match(r"\d+(\.\d+)?g\.?", item):
+                    v = float(item.replace("g", ""))
+                    unit = "_g"
+                elif re.match(r"\d+(\.\d+)?mg\.?", item):
+                    v = float(re.sub("mg(\.)?", "", item))
+                    unit = "_mg"
+                elif re.match(r"\d+(\.\d+)?", item):
+                    v = float(item)
+                else:
+                    k = item
+            if k and v:
+                nutri_data[k + unit] = v
 
     ingredients = [i.text.strip() for i in soup.select('.ingredients-item-name')]
 
