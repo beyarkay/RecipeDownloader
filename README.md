@@ -135,8 +135,11 @@ dtype: float64
 
 ```
 
-## Correlations of the top 200 ingredients
-TODO
+## Correlations of the top 15 ingredients
+![heatmap_top_15.png](heatmap_top_15.png)
+
+## Correlations of the top 40 ingredients
+![heatmap_top_40.png](heatmap_top_40.png)
 
 
 ## Future Features
