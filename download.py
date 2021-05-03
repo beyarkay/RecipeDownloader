@@ -1,4 +1,5 @@
 import traceback
+import os
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,18 +10,25 @@ import tqdm
 
 
 def main():
-    all_links = dl_allrecipescom.fetch_item_links(limit=1000)
+    if os.path.exists("recipe_links.txt"):
+        print("Using links from recipe_links.txt")
+        with open("recipe_links.txt", "r") as f:
+            all_links = [l.strip() for l in f.readlines()]
+    else:
+        print("Scraping links from the internet")
+        all_links = dl_allrecipescom.fetch_item_links(limit=10_000)
     items = []
     pbar = tqdm.tqdm(all_links)
-    for i, link in enumerate(pbar):
+    for link in pbar:
         try:
             pbar.set_description(desc=link)
             items.append(dl_allrecipescom.link_to_dict(link))
         except Exception:
             traceback.print_exc()
-        if i % 10 == 0:
+        if pbar.n % 10 == 0 and pbar.n > 0:
             pd.DataFrame(items).to_csv("recipes.csv")
     pd.DataFrame(items).to_csv("recipes.csv")
+    pbar.close()
 
 
 if __name__ == "__main__":

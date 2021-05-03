@@ -1,3 +1,4 @@
+import traceback
 import datetime
 import typing
 
@@ -9,7 +10,15 @@ import re
 from pprint import pprint
 
 ROOTS = [
-    "https://www.allrecipes.com/recipes/87/everyday-cooking/vegetarian/"
+    "https://www.allrecipes.com/recipes/87/everyday-cooking/vegetarian/",
+    "https://www.allrecipes.com/recipes/265/everyday-cooking/vegetarian/main-dishes/",
+    "https://www.allrecipes.com/recipes/16798/main-dish/quiche/vegetarian-quiche/",
+    "https://www.allrecipes.com/recipes/2272/main-dish/savory-pies/vegetarian-pie/",
+    "https://www.allrecipes.com/recipes/16778/everyday-cooking/vegetarian/protein/",
+    "https://www.allrecipes.com/recipes/129/everyday-cooking/vegetarian/bbq-grilling/",
+    "https://www.allrecipes.com/recipes/17684/everyday-cooking/vegetarian/whole-grain/",
+    "https://www.allrecipes.com/recipes/16800/main-dish/pasta/lasagna/vegetarian-lasagna/",
+    "https://www.allrecipes.com/recipes/1227/everyday-cooking/vegan/",
 ]
 
 
@@ -19,24 +28,40 @@ def fetch_item_links(limit=100) -> typing.List:
         pbar = tqdm.tqdm(total=limit)
     else:
         pbar = tqdm.tqdm(total=limit)
+    count = 0
     for root in ROOTS:
-        link = root
-        while link is not None and (len(all_links) < limit or limit == 0):
-            item_links, link = fetch_one_page_of_links(link)
-            all_links.extend(item_links)
-            all_links = list(set(all_links))
-            pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../"))
-            pbar.update(len(all_links) - pbar.n)
+        try:
+            link = root
+            while link is not None and (len(all_links) < limit or limit == 0):
+                item_links, link = fetch_one_page_of_links(link, pbar)
+                pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../") + " (adding links to set)")
+                all_links.extend(item_links)
+                all_links = list(set(all_links))
+                pbar.update(len(all_links) - pbar.n)
+                if count % 10 == 0:
+                    with open("recipe_links.txt", "w+") as f:
+                        f.writelines("\n".join(all_links))
+                count += 1
+
+        except Exception:
+            traceback.print_exc()
     pbar.close()
     return all_links[:limit]
 
 
-def fetch_one_page_of_links(link: typing.AnyStr) -> typing.Tuple:
+def fetch_one_page_of_links(link: typing.AnyStr, pbar: tqdm.tqdm) -> typing.Tuple:
+    pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../") + " (fetching page)")
     start = datetime.datetime.now()
-    r = requests.get(link)
+    if "https://www.allrecipes.com/" in link:
+        r = requests.get(link)
+    else:
+        print(f"Link {link} doesn't contain 'https://www.allrecipes.com/', attempting to prepend it")
+        r = requests.get('https://www.allrecipes.com' + link)
     duration = datetime.datetime.now() - start
+    pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../") + " (making soup)")
     # print(f"\tFetching {link} took {duration.total_seconds()}s")
     soup = BeautifulSoup(r.text, 'html.parser')
+    pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../") + " (scraping links)")
 
     # ====================================================================
     #   Collect all the item links on this page.
@@ -68,7 +93,7 @@ def fetch_one_page_of_links(link: typing.AnyStr) -> typing.Tuple:
 def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     # print(f"Parsing link {link}")
     start = datetime.datetime.now()
-    r = requests.get(link)
+    r = requests.get(link, timeout=7)
     duration = datetime.datetime.now() - start
     soup = BeautifulSoup(r.text, 'html.parser')
 
