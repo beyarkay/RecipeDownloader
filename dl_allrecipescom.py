@@ -75,6 +75,8 @@ def fetch_item_links(limit=100) -> typing.List:
                 count += 1
 
         except Exception:
+            with open("recipe_links.txt", "w+") as f:
+                f.writelines("\n".join(all_links))
             traceback.print_exc()
     pbar.close()
     return all_links[:limit]
@@ -124,7 +126,17 @@ def fetch_one_page_of_links(link: typing.AnyStr, pbar: tqdm.tqdm) -> typing.Tupl
 def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     # print(f"Parsing link {link}")
     start = datetime.datetime.now()
-    r = requests.get(link, timeout=7)
+    attempts_left = 10
+    while attempts_left > 0:
+        try:
+            r = requests.get(link, timeout=7)
+            break
+        except requests.exceptions.ReadTimeout as e:
+            print(".", end="")
+            attempts_left -= 1
+            continue
+    if attempts_left != 10:
+        print("Request succedded")
     duration = datetime.datetime.now() - start
     soup = BeautifulSoup(r.text, 'html.parser')
 
