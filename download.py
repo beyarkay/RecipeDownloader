@@ -1,5 +1,6 @@
 import traceback
 import os
+import sys
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,7 +17,8 @@ def main():
             all_links = [l.strip() for l in f.readlines()]
     else:
         print("Scraping links from the internet")
-        all_links = dl_allrecipescom.fetch_item_links(limit=10_000)
+        limit = 10_000 if len(sys.argv) != 2 else int(sys.argv[1])
+        all_links = dl_allrecipescom.fetch_item_links(limit=limit)
     items = []
     pbar = tqdm.tqdm(all_links)
     for link in pbar:
