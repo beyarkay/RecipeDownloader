@@ -59,7 +59,13 @@ def fetch_item_links(limit=100) -> typing.List:
             link = root
             while link is not None and (len(all_links) < limit or limit == 0):
                 item_links, link = fetch_one_page_of_links(link, pbar)
-                pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../") + " (adding links to set)")
+                if link is not None:
+                    pbar.set_description(desc=link.replace(r"https://www.allrecipes.com/", ".../") + " (adding links to set)")
+                else:
+                    pbar.set_description(desc="Moving on to next root link")
+                    with open("recipe_links.txt", "w+") as f:
+                        f.writelines("\n".join(all_links))
+
                 all_links.extend(item_links)
                 all_links = list(set(all_links))
                 pbar.update(len(all_links) - pbar.n)
