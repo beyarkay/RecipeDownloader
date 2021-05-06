@@ -30,20 +30,6 @@ ROOTS = [
         "https://www.allrecipes.com/recipes/94/soups-stews-and-chili/",
         "https://www.allrecipes.com/recipes/236/us-recipes/",
         "https://www.allrecipes.com/recipes/86/world-cuisine/",
-        #"https://www.allrecipes.com/recipes/16798/main-dish/quiche/vegetarian-quiche/",
-        #"https://www.allrecipes.com/recipes/16800/main-dish/pasta/lasagna/vegetarian-lasagna/",
-        #"https://www.allrecipes.com/recipes/17684/everyday-cooking/vegetarian/whole-grain/",
-        #"https://www.allrecipes.com/recipes/1947/everyday-cooking/quick-and-easy/",
-        #"https://www.allrecipes.com/recipes/201/meat-and-poultry/chicken/",
-        #"https://www.allrecipes.com/recipes/201/meat-and-poultry/chicken/",
-        #"https://www.allrecipes.com/recipes/2272/main-dish/savory-pies/vegetarian-pie/",
-        #"https://www.allrecipes.com/recipes/265/everyday-cooking/vegetarian/main-dishes/",
-        #"https://www.allrecipes.com/recipes/362/desserts/cookies/",
-        #"https://www.allrecipes.com/recipes/78/breakfast-and-brunch/",
-        #"https://www.allrecipes.com/recipes/87/everyday-cooking/vegetarian/",
-        #"https://www.allrecipes.com/recipes/92/meat-and-poultry/",
-        #"https://www.allrecipes.com/recipes/94/soups-stews-and-chili/",
-        #"https://www.allrecipes.com/recipes/96/salad/",
 ]
 
 
@@ -178,22 +164,25 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
         nutrition = nutrition_section.select_one("div.section-body") \
             .text.replace("Full Nutrition", "").strip().split("; ")
         for n in nutrition:
-            k = ""
-            v = ""
-            for item in n.split(" "):
-                unit = ""
-                if re.match(r"\d+(\.\d+)?g\.?", item):
-                    v = float(item.replace("g", ""))
-                    unit = "_g"
-                elif re.match(r"\d+(\.\d+)?mg\.?", item):
-                    v = float(re.sub("mg(\.)?", "", item))
-                    unit = "_mg"
-                elif re.match(r"\d+(\.\d+)?", item):
-                    v = float(item)
-                else:
-                    k = item
-            if k and v:
-                nutri_data[k + unit] = v
+            try:
+                k = ""
+                v = ""
+                for item in n.split(" "):
+                    unit = ""
+                    if re.match(r"\d+(\.\d+)?g\.?", item):
+                        v = float(re.sub(r"g(\.)?", "", item))
+                        unit = "_g"
+                    elif re.match(r"\d+(\.\d+)?mg\.?", item):
+                        v = float(re.sub(r"mg(\.)?", "", item))
+                        unit = "_mg"
+                    elif re.match(r"\d+(\.\d+)?", item):
+                        v = float(item)
+                    else:
+                        k = item
+                if k and v:
+                    nutri_data[k + unit] = v
+            except ValueError as e:
+                traceback.print_exc()
 
     ingredients = [i.text.strip() for i in soup.select('.ingredients-item-name')]
 
