@@ -126,20 +126,26 @@ def fetch_one_page_of_links(link: typing.AnyStr, pbar: tqdm.tqdm) -> typing.Tupl
 def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     # print(f"Parsing link {link}")
     start = datetime.datetime.now()
-    attempts_left = 10
-    while attempts_left > 0:
+    title_element = None
+    attempts = 0
+    while title_element is None and attempts < 12:
+        attempts += 1
         try:
-            r = requests.get(link, timeout=7)
-            break
+            r = requests.get(link, timeout=10)
+            soup = BeautifulSoup(r.text, 'html.parser')
+            title_element = soup.select_one("h1.headline.heading-content")
         except requests.exceptions.ReadTimeout as e:
-            print(".", end="")
-            attempts_left -= 1
             continue
-    if attempts_left != 10:
-        print("Request succedded")
     duration = datetime.datetime.now() - start
-    soup = BeautifulSoup(r.text, 'html.parser')
+    if attempts >= 12:
+        item = {
+            "duration": duration,
+            "link": link,
+        }
+        return item
 
+    title = title_element.text
+    
     ratings_element = soup.select_one(".ratings-list")
     if ratings_element:
         rating_keys = [int(stars.text.strip().replace(" star values:", "")) for stars in
@@ -192,8 +198,6 @@ def link_to_dict(link: typing.AnyStr) -> typing.Dict:
     ingredients = [i.text.strip() for i in soup.select('.ingredients-item-name')]
 
     ingredient_wordvec = __ingredients_to_wordvec(ingredients)
-
-    title = soup.select_one("h1.headline.heading-content").text
 
     cook_item = soup.select_one("a.author-block.authorBlock.authorBlock--link")
     if cook_item:
