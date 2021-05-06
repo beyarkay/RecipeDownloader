@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 import dl_allrecipescom
 from pprint import pprint
 import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('display.precision', 2)
 import tqdm
 
 
@@ -28,7 +30,11 @@ def main():
         except Exception:
             traceback.print_exc()
         if pbar.n % 10 == 0 and pbar.n > 0:
-            pd.DataFrame(items).to_csv("recipes.csv")
+            df = pd.DataFrame(items)
+            if pbar.n % 100 == 10:
+                print(df[[c for c in df.columns if 'uses_' not in c]].describe())
+            df.to_csv("recipes.csv")
+            pbar.set_description(desc=f"Saving {len(items)} recipes")
     pd.DataFrame(items).to_csv("recipes.csv")
     pbar.close()
 
