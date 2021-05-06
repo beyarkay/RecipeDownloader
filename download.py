@@ -1,6 +1,7 @@
 import traceback
 import os
 import sys
+from multiprocessing import Pool, TimeoutError
 
 import requests
 from bs4 import BeautifulSoup
@@ -26,31 +27,44 @@ def main():
         existing_recipes = pd.read_csv('recipes.csv')
         existing_links = set(existing_recipes['link'].to_list())
         links_to_dl = list(set(all_links) - existing_links)
-        pbar = tqdm.tqdm(links_to_dl)
         print(f'Recipe links ({len(all_links)}) - existing recipes ({len(existing_recipes)}) = links to download ({len(links_to_dl)})')
         del existing_links
     else:
         existing_recipes = pd.DataFrame()
-        pbar = tqdm.tqdm(all_links)
-        print(f'Recipe links ({len(all_links)}) - existing recipes (0) = links to download ({len(all_links)})')
+        links_to_dl = all_links[:]
+        print(f'Recipe links ({len(all_links)}) - existing recipes ({len(existing_recipes)}) = links to download ({len(links_to_dl)})')
 
-    for link in pbar:
-        try:
-            pbar.set_description(desc=link)
-            items.append(dl_allrecipescom.link_to_dict(link))
-        except Exception:
-            traceback.print_exc()
-        if pbar.n % 100 == 1:
-            df = pd.DataFrame(items)
-            if len(existing_recipes) == 0:
-                existing_recipes = df.copy()
-            else:
-                existing_recipes.append(df, sort=False)
-            if pbar.n % 1000 == 1:
-                print(existing_recipes[[c for c in existing_recipes.columns if 'uses_' not in c]].describe())
-            existing_recipes.to_csv("recipes.csv")
-            pbar.set_description(desc=f"Saving {len(items)} recipes")
-            items = []
+
+    pbar = tqdm.tqdm(links_to_dl)
+    NUM_PROCESSES = 4
+    with Pool(processes=NUM_PROCESSES) as pool:
+        while len(links_to_dl) > 0:
+            results = []
+            links = []
+            for _ in range(min(NUM_PROCESSES, len(links_to_dl))):
+                links.append(links_to_dl.pop())
+                results.append(pool.apply_async(dl_allrecipescom.link_to_dict, (links[-1],)))
+            for link, res in zip(links, results):
+                try:
+                    items.append(res.get(timeout=10))
+                    pbar.set_description(desc=link)
+                    pbar.update()
+                except TimeoutError as e:
+                    links_to_dl.append(link)
+                    traceback.print_exc()
+                except Exception:
+                    traceback.print_exc()
+
+            if len(items) > 100:
+                df = pd.DataFrame(items)
+                #print(f"{len(df)} + {len(existing_recipes)} = {len(df) + len(existing_recipes)}")
+                if len(existing_recipes) == 0:
+                    existing_recipes = df.copy()
+                else:
+                    existing_recipes = pd.concat([existing_recipes, df], ignore_index=True, sort=False)
+                existing_recipes.to_csv("recipes.csv")
+                items = []
+
     existing_recipes.append(pd.DataFrame(items))
     existing_recipes.to_csv("recipes.csv")
     pbar.close()
