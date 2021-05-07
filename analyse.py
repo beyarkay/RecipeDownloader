@@ -81,7 +81,34 @@ def main():
     plt.ylabel('Absolute Error [rating]')
     plt.show()
 
+def stus_thing():
+    plt.figure(figsize=(30, 24))
+    model = NMF(n_components=2)
+    num_ingredients = 500
+    top_ingredients = pd.Series(df[[c for c in df.columns.to_list() if 'uses_' in c]]
+            .count()
+            .sort_values(ascending=False)
+            .head(num_ingredients).index
+    )
+    zeroed = df.loc[:, top_ingredients]
+    zeroed.fillna(0, inplace=True)
+    zeroed = zeroed.T
+    # Fit the model to zeroed
+    model.fit(zeroed)
+    # Transform the televote_Rank: nmf_features
+    nmf_features = model.transform(zeroed)
 
+    inx = np.array(zeroed.index)
+    xs = nmf_features[:, 0]
+    # Select the 1th feature: ys
+    ys = nmf_features[:, 1]
+    # Scatter plot
+    plt.scatter(xs, ys, alpha=0.5)
+    # Annotate the points
+    for x, y, inx in zip(xs, ys, inx):
+        plt.annotate(inx, (x, y), fontsize=10, alpha=0.5)
+    plt.savefig('nnmf.png')
+    plt.show()
 
 
 def plot_loss(history):
